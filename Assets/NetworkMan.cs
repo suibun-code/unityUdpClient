@@ -8,16 +8,19 @@ using System.Net;
 
 public class NetworkMan : MonoBehaviour
 {
+    string idToDelete = "non";
+    int spawnPos = 0;
+    public GameObject cubePrefab1;
     public UdpClient udp;
     // Start is called before the first frame update
     void Start()
     {
         udp = new UdpClient();
-        
-        udp.Connect("PUT_IP_ADDRESS_HERE",12345);
+        //3.17.142.185
+        udp.Connect("3.17.142.185", 12345);
 
+        //Reply, sending back "connect" in bytes to notify that a connection has been established. Send the length of the bytes as well.
         Byte[] sendBytes = Encoding.ASCII.GetBytes("connect");
-      
         udp.Send(sendBytes, sendBytes.Length);
 
         udp.BeginReceive(new AsyncCallback(OnReceived), udp);
@@ -29,15 +32,16 @@ public class NetworkMan : MonoBehaviour
         udp.Dispose();
     }
 
-
     public enum commands{
         NEW_CLIENT,
-        UPDATE
+        UPDATE,
+        DROPPED
     };
     
     [Serializable]
     public class Message{
         public commands cmd;
+        public Player player;
     }
     
     [Serializable]
@@ -49,7 +53,9 @@ public class NetworkMan : MonoBehaviour
             public float B;
         }
         public string id;
-        public receivedColor color;        
+        public receivedColor color;
+        public bool spawned = false;
+        public GameObject playerMesh;
     }
 
     [Serializable]
@@ -61,6 +67,8 @@ public class NetworkMan : MonoBehaviour
     public class GameState{
         public Player[] players;
     }
+
+     public List<Player> connectedPlayers = new List<Player>();
 
     public Message latestMessage;
     public GameState lastestGameState;
@@ -77,14 +85,20 @@ public class NetworkMan : MonoBehaviour
         // do what you'd like with `message` here:
         string returnData = Encoding.ASCII.GetString(message);
         Debug.Log("Got this: " + returnData);
-        
+
         latestMessage = JsonUtility.FromJson<Message>(returnData);
+
         try{
             switch(latestMessage.cmd){
                 case commands.NEW_CLIENT:
+                    connectedPlayers.Add(latestMessage.player);
                     break;
                 case commands.UPDATE:
                     lastestGameState = JsonUtility.FromJson<GameState>(returnData);
+                    break;
+                case commands.DROPPED:
+                    Debug.Log("Dropped: " + latestMessage.player.id);
+                    idToDelete = latestMessage.player.id;
                     break;
                 default:
                     Debug.Log("Error");
@@ -100,15 +114,45 @@ public class NetworkMan : MonoBehaviour
     }
 
     void SpawnPlayers(){
-
+        for (int i = 0; i < connectedPlayers.Count; i++)
+        {
+            if (connectedPlayers[i].spawned == false)
+            {
+                Debug.Log("New player: " + connectedPlayers[i].id);
+                Vector3 start = new Vector3(spawnPos, 0, 0);
+                GameObject newMesh = Instantiate(cubePrefab1, start, Quaternion.identity);
+                Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
+                var cubeRenderer = newMesh.GetComponent<Renderer>();
+                cubeRenderer.material.SetColor("_Color", myColor);
+                connectedPlayers[i].playerMesh = newMesh;
+                connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().id = connectedPlayers[i].id;
+                connectedPlayers[i].spawned = true;
+                spawnPos++;
+            }
+        }
     }
 
     void UpdatePlayers(){
-
+        for (int i = 0; i < lastestGameState.players.Length; i++)
+        {
+            connectedPlayers[i].id = lastestGameState.players[i].id;
+            connectedPlayers[i].color = lastestGameState.players[i].color;
+            Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
+            var cubeRenderer = connectedPlayers[i].playerMesh.GetComponent<Renderer>();
+            cubeRenderer.material.SetColor("_Color", myColor);
+            connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().id = lastestGameState.players[i].id;
+        }
     }
 
-    void DestroyPlayers(){
-
+    void DestroyPlayers(string id){
+        for (int i = 0; i < connectedPlayers.Count; i++)
+        {
+            if (connectedPlayers[i].id == id)
+            {
+                Destroy(connectedPlayers[i].playerMesh);
+                connectedPlayers.RemoveAt(i);
+            }
+        }
     }
     
     void HeartBeat(){
@@ -119,6 +163,6 @@ public class NetworkMan : MonoBehaviour
     void Update(){
         SpawnPlayers();
         UpdatePlayers();
-        DestroyPlayers();
+        DestroyPlayers(idToDelete);
     }
 }
