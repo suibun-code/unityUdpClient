@@ -258,6 +258,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1ad586668d834644b8076c3e4f8466f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  thisID: 
   cubePrefab1: {fileID: 6642033739258463653, guid: 1ca51ff113bcc0340acb3c4e36d3fa75,
     type: 3}
   connectedPlayers: []
@@ -269,6 +270,7 @@ MonoBehaviour:
         R: 0
         G: 0
         B: 0
+      position: {x: 0, y: 0, z: 0}
       spawned: 0
       playerMesh: {fileID: 0}
   lastestGameState:

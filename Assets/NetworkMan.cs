@@ -106,7 +106,6 @@ public class NetworkMan : MonoBehaviour
             {
                 case commands.NEW_CLIENT:
                     connectedPlayers.Add(latestMessage.player);
-
                     thisID = latestMessage.player.id;
                     break;
                 case commands.UPDATE:
@@ -137,14 +136,13 @@ public class NetworkMan : MonoBehaviour
             if (connectedPlayers[i].spawned == false)
             {
                 Debug.Log("New player: " + connectedPlayers[i].id);
-                Vector3 start = new Vector3(spawnPos, 0, 0);
+                Vector3 start = new Vector3(0, 0, 0);
                 GameObject newMesh = Instantiate(cubePrefab1, start, Quaternion.identity);
                 Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
                 var cubeRenderer = newMesh.GetComponent<Renderer>();
                 cubeRenderer.material.SetColor("_Color", myColor);
                 connectedPlayers[i].playerMesh = newMesh;
                 connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().id = connectedPlayers[i].id;
-                connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().player = connectedPlayers[i];
                 connectedPlayers[i].spawned = true;
                 spawnPos++;
             }
@@ -155,23 +153,19 @@ public class NetworkMan : MonoBehaviour
     {
         for (int i = 0; i < lastestGameState.players.Length; i++)
         {
-            connectedPlayers[i].id = lastestGameState.players[i].id;
-            connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().player = connectedPlayers[i];
-            connectedPlayers[i].color = lastestGameState.players[i].color;
 
-            if (thisID != connectedPlayers[i].id)
+            if (thisID != lastestGameState.players[i].id)
             {
-               connectedPlayers[i].position = lastestGameState.players[i].position; 
+                connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().position = lastestGameState.players[i].position;
             }
-            else
-            {
-                connectedPlayers[i].position = connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().cubePosition;
-            }
+            connectedPlayers[i].position = connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().position;
+
+            connectedPlayers[i].id = lastestGameState.players[i].id;
+            connectedPlayers[i].color = lastestGameState.players[i].color;
 
             Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
             var cubeRenderer = connectedPlayers[i].playerMesh.GetComponent<Renderer>();
             cubeRenderer.material.SetColor("_Color", myColor);
-            connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().id = lastestGameState.players[i].id;
         }
     }
 
@@ -181,6 +175,7 @@ public class NetworkMan : MonoBehaviour
         {
             if (connectedPlayers[i].id == id)
             {
+                Debug.Log("Removed:" + connectedPlayers[i].id);
                 Destroy(connectedPlayers[i].playerMesh);
                 connectedPlayers.RemoveAt(i);
             }
@@ -199,10 +194,13 @@ public class NetworkMan : MonoBehaviour
         {
             for (int i = 0; i < connectedPlayers.Count; i++)
             {
-                string sendMessage = JsonUtility.ToJson(connectedPlayers[i]);
-                Byte[] sendBytes1 = Encoding.ASCII.GetBytes(sendMessage);
+                if (connectedPlayers[i].id == thisID)
+                {
+                    string sendMessage = JsonUtility.ToJson(connectedPlayers[i]);
+                    Byte[] sendBytes1 = Encoding.ASCII.GetBytes(sendMessage);
 
-                udp.Send(sendBytes1, sendBytes1.Length);
+                    udp.Send(sendBytes1, sendBytes1.Length);
+                }
             }
         }
     }

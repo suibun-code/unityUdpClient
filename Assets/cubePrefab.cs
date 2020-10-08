@@ -8,55 +8,47 @@ using static NetworkMan;
 public class cubePrefab : MonoBehaviour
 {
     public NetworkMan NetManager;
-    public Player player;
-    public Vector3 cubePosition = new Vector3(0, 0, 0);
+    public Vector3 position = new Vector3(0, 0, 0);
     public string id;
     // Start is called before the first frame update
 
     void Start()
     {
-        cubePosition = new Vector3(0, 0, 0);
+        position = new Vector3(0, 0, 0);
         NetManager = GameObject.Find("NetworkMan").GetComponent<NetworkMan>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (NetManager.connectedPlayers.Count != 0)
+        if (NetManager.thisID != id)
         {
-            if (NetManager.thisID != id)
-            {
-                transform.position = cubePosition;
-                return;
-            }
-            
-            if (Input.GetKey(KeyCode.W))
-            {
-                cubePosition.y += 1 * Time.deltaTime;
-                transform.SetPositionAndRotation(cubePosition, Quaternion.identity);
-                Debug.Log("W");
-            }
+            transform.position = position;
+            return;
+        }
 
-            if (Input.GetKey(KeyCode.A))
-            {
-                cubePosition.x -= 1 * Time.deltaTime;
-                transform.SetPositionAndRotation(cubePosition, Quaternion.identity);
-                Debug.Log("A");
-            }
+        if (Input.GetKey(KeyCode.W))
+        {
+            position.y += 1 * Time.deltaTime;
+            Debug.Log("W");
+        }
 
-            if (Input.GetKey(KeyCode.S))
-            {
-                cubePosition.y -= 1 * Time.deltaTime;
-                transform.SetPositionAndRotation(cubePosition, Quaternion.identity);
-                Debug.Log("S");
-            }
+        if (Input.GetKey(KeyCode.A))
+        {
+            position.x -= 1 * Time.deltaTime;
+            Debug.Log("A");
+        }
 
-            if (Input.GetKey(KeyCode.D))
-            {
-                cubePosition.x += 1 * Time.deltaTime;
-                transform.SetPositionAndRotation(cubePosition, Quaternion.identity);
-                Debug.Log("D");
-            }
+        if (Input.GetKey(KeyCode.S))
+        {
+            position.y -= 1 * Time.deltaTime;
+            Debug.Log("S");
+        }
+
+        if (Input.GetKey(KeyCode.D))
+        {
+            position.x += 1 * Time.deltaTime;
+            Debug.Log("D");
         }
     }
 }
