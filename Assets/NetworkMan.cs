@@ -26,70 +26,83 @@ public class NetworkMan : MonoBehaviour
         udp.BeginReceive(new AsyncCallback(OnReceived), udp);
 
         InvokeRepeating("HeartBeat", 1, 1);
+        InvokeRepeating("SendPosition", 1, 0.03f);
     }
 
-    void OnDestroy(){
+    void OnDestroy()
+    {
         udp.Dispose();
     }
 
-    public enum commands{
+    public enum commands
+    {
         NEW_CLIENT,
         UPDATE,
         DROPPED
     };
-    
+
     [Serializable]
-    public class Message{
+    public class Message
+    {
         public commands cmd;
         public Player player;
     }
-    
+
     [Serializable]
-    public class Player{
+    public class Player
+    {
         [Serializable]
-        public struct receivedColor{
+        public struct receivedColor
+        {
             public float R;
             public float G;
             public float B;
         }
+
         public string id;
         public receivedColor color;
+        public Vector3 position;
         public bool spawned = false;
         public GameObject playerMesh;
     }
 
     [Serializable]
-    public class NewPlayer{
-        
+    public class NewPlayer
+    {
+
     }
 
     [Serializable]
-    public class GameState{
+    public class GameState
+    {
         public Player[] players;
     }
 
-     public List<Player> connectedPlayers = new List<Player>();
+    public List<Player> connectedPlayers = new List<Player>();
 
     public Message latestMessage;
     public GameState lastestGameState;
-    void OnReceived(IAsyncResult result){
+    void OnReceived(IAsyncResult result)
+    {
         // this is what had been passed into BeginReceive as the second parameter:
         UdpClient socket = result.AsyncState as UdpClient;
-        
+
         // points towards whoever had sent the message:
         IPEndPoint source = new IPEndPoint(0, 0);
 
         // get the actual message and fill out the source:
         byte[] message = socket.EndReceive(result, ref source);
-        
+
         // do what you'd like with `message` here:
         string returnData = Encoding.ASCII.GetString(message);
         Debug.Log("Got this: " + returnData);
 
         latestMessage = JsonUtility.FromJson<Message>(returnData);
 
-        try{
-            switch(latestMessage.cmd){
+        try
+        {
+            switch (latestMessage.cmd)
+            {
                 case commands.NEW_CLIENT:
                     connectedPlayers.Add(latestMessage.player);
                     break;
@@ -105,15 +118,17 @@ public class NetworkMan : MonoBehaviour
                     break;
             }
         }
-        catch (Exception e){
+        catch (Exception e)
+        {
             Debug.Log(e.ToString());
         }
-        
+
         // schedule the next receive operation once reading is done:
         socket.BeginReceive(new AsyncCallback(OnReceived), socket);
     }
 
-    void SpawnPlayers(){
+    void SpawnPlayers()
+    {
         for (int i = 0; i < connectedPlayers.Count; i++)
         {
             if (connectedPlayers[i].spawned == false)
@@ -132,11 +147,16 @@ public class NetworkMan : MonoBehaviour
         }
     }
 
-    void UpdatePlayers(){
+    void UpdatePlayers()
+    {
         for (int i = 0; i < lastestGameState.players.Length; i++)
         {
             connectedPlayers[i].id = lastestGameState.players[i].id;
             connectedPlayers[i].color = lastestGameState.players[i].color;
+            connectedPlayers[i].position = lastestGameState.players[i].position;
+
+            Debug.Log(connectedPlayers[i].position.x);
+
             Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
             var cubeRenderer = connectedPlayers[i].playerMesh.GetComponent<Renderer>();
             cubeRenderer.material.SetColor("_Color", myColor);
@@ -144,7 +164,8 @@ public class NetworkMan : MonoBehaviour
         }
     }
 
-    void DestroyPlayers(string id){
+    void DestroyPlayers(string id)
+    {
         for (int i = 0; i < connectedPlayers.Count; i++)
         {
             if (connectedPlayers[i].id == id)
@@ -154,13 +175,27 @@ public class NetworkMan : MonoBehaviour
             }
         }
     }
-    
-    void HeartBeat(){
+
+    void HeartBeat()
+    {
         Byte[] sendBytes = Encoding.ASCII.GetBytes("heartbeat");
         udp.Send(sendBytes, sendBytes.Length);
     }
 
-    void Update(){
+    void SendPosition()
+    {
+        if (connectedPlayers.Count != 0)
+        {
+            connectedPlayers[0].position.x = 5;
+            string sendMessage = JsonUtility.ToJson(connectedPlayers[0]);
+            Byte[] sendBytes1 = Encoding.ASCII.GetBytes(sendMessage);
+
+            udp.Send(sendBytes1, sendBytes1.Length);
+        }
+    }
+
+    void Update()
+    {
         SpawnPlayers();
         UpdatePlayers();
         DestroyPlayers(idToDelete);
