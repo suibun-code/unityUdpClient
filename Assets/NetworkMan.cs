@@ -9,6 +9,7 @@ using System.Net;
 public class NetworkMan : MonoBehaviour
 {
     string idToDelete = "non";
+    public string thisID;
     int spawnPos = 0;
     public GameObject cubePrefab1;
     public UdpClient udp;
@@ -105,6 +106,8 @@ public class NetworkMan : MonoBehaviour
             {
                 case commands.NEW_CLIENT:
                     connectedPlayers.Add(latestMessage.player);
+
+                    thisID = latestMessage.player.id;
                     break;
                 case commands.UPDATE:
                     lastestGameState = JsonUtility.FromJson<GameState>(returnData);
@@ -141,6 +144,7 @@ public class NetworkMan : MonoBehaviour
                 cubeRenderer.material.SetColor("_Color", myColor);
                 connectedPlayers[i].playerMesh = newMesh;
                 connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().id = connectedPlayers[i].id;
+                connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().player = connectedPlayers[i];
                 connectedPlayers[i].spawned = true;
                 spawnPos++;
             }
@@ -152,10 +156,17 @@ public class NetworkMan : MonoBehaviour
         for (int i = 0; i < lastestGameState.players.Length; i++)
         {
             connectedPlayers[i].id = lastestGameState.players[i].id;
+            connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().player = connectedPlayers[i];
             connectedPlayers[i].color = lastestGameState.players[i].color;
-            connectedPlayers[i].position = lastestGameState.players[i].position;
 
-            Debug.Log(connectedPlayers[i].position.x);
+            if (thisID != connectedPlayers[i].id)
+            {
+               connectedPlayers[i].position = lastestGameState.players[i].position; 
+            }
+            else
+            {
+                connectedPlayers[i].position = connectedPlayers[i].playerMesh.GetComponent<cubePrefab>().cubePosition;
+            }
 
             Color myColor = new Color(connectedPlayers[i].color.R, connectedPlayers[i].color.G, connectedPlayers[i].color.B);
             var cubeRenderer = connectedPlayers[i].playerMesh.GetComponent<Renderer>();
@@ -186,11 +197,13 @@ public class NetworkMan : MonoBehaviour
     {
         if (connectedPlayers.Count != 0)
         {
-            connectedPlayers[0].position.x = 5;
-            string sendMessage = JsonUtility.ToJson(connectedPlayers[0]);
-            Byte[] sendBytes1 = Encoding.ASCII.GetBytes(sendMessage);
+            for (int i = 0; i < connectedPlayers.Count; i++)
+            {
+                string sendMessage = JsonUtility.ToJson(connectedPlayers[i]);
+                Byte[] sendBytes1 = Encoding.ASCII.GetBytes(sendMessage);
 
-            udp.Send(sendBytes1, sendBytes1.Length);
+                udp.Send(sendBytes1, sendBytes1.Length);
+            }
         }
     }
 
